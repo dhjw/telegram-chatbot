@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Change current working directory to script directory
+# Change current working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # Load config
@@ -31,12 +31,11 @@ except Exception as e:
 	quit()
 
 
-# Helper function to check chat ID authorization
+# Helper for chat ID authorization
 def is_chat_authorized(update: Update) -> bool:
-	# Check 'enforce_chat_ids' as per the latest config.json
 	if config['misc_options'].get('enforce_chat_ids', False):
 		allowed_chat_ids = config['misc_options'].get('allow_chat_ids', [])
-		if allowed_chat_ids: # Only enforce if the list is not empty
+		if allowed_chat_ids: # Enforce if list not empty
 			chat_id = update.effective_chat.id
 			if chat_id not in allowed_chat_ids:
 				logger.info(f"Ignoring unauthorized chat ID: {chat_id}")
@@ -50,15 +49,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 	logger.info('help_command() update: %s', update)
 
 	if not is_chat_authorized(update):
-		return # Silently ignore unauthorized chat
+		return # Ignore unauthorized chat
 
 	help_text = "Available commands:\n`/help`\n"
 
-	# /id command is hidden and should not be listed in /help
-	# help_text += "`/id`\n" # Removed as per user request
-
 	for provider_config in config['chat_providers']:
-		# Ensure memory_wipe_subcmd exists before adding to help text
 		wipe_subcmd_display = ""
 		if config['chat_options'].get('memory_enabled', False) and config['chat_options'].get('memory_wipe_subcmd'):
 			wipe_subcmd_display = f" [{config['chat_options']['memory_wipe_subcmd']}]"
@@ -71,17 +66,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_config: dict) -> None:
 	"""Handles chat commands for different providers."""
 	if not is_chat_authorized(update):
-		return # Silently ignore unauthorized chat
+		return # Ignore unauthorized chat
 
 	display_name = provider_config.get('name', provider_config['cmd'])
 	provider_cmd = provider_config['cmd'] # Memory key
 
-	# Get message object (new or edited)
+	# Get message object
 	message_to_process = update.edited_message if update.edited_message else update.message
 
 	if not message_to_process:
 		logger.warning("Chat update without effective message.")
-		return # Cannot reply
+		return # No reply
 
 	chat_id = message_to_process.chat_id
 	user_message_id = message_to_process.message_id # User's message ID
@@ -107,29 +102,9 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 			except Exception as edit_e:
 				logger.warning('Failed to edit message %s to "Please wait..." (error: %s). Proceeding without update.', bot_reply_id_for_edit, edit_e)
 
-		# Handle empty arguments or determine user query
+		# If no arguments, show help text
 		if not context.args:
-			response_content = (
-				f"Please provide a message after the /{provider_cmd} command. "
-				f"E.g., /{provider_cmd} What is the capital of France?"
-			)
-			parse_mode_for_response = None
-
-			# Attempt to edit "Please wait..." with usage or send new
-			if bot_reply_id_for_edit:
-				try:
-					await context.bot.edit_message_text(
-						chat_id=chat_id,
-						message_id=bot_reply_id_for_edit,
-						text=response_content,
-						parse_mode=parse_mode_for_response
-					)
-				except Exception as edit_e:
-					logger.warning('Failed to edit message %s with usage text (error: %s). Sending new usage message.', bot_reply_id_for_edit, edit_e)
-					await message_to_process.reply_text(response_content, parse_mode=parse_mode_for_response)
-			else:
-				new_reply = await message_to_process.reply_text(response_content, parse_mode=parse_mode_for_response)
-				context.chat_data['bot_replies'][user_message_id] = new_reply.message_id
+			await help_command(update, context)
 			return
 
 		user_query = " ".join(context.args)
@@ -142,7 +117,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 				chat_memories = context.chat_data.setdefault('chat_memories', {})
 				if provider_cmd in chat_memories:
 					wiped_count = len(chat_memories[provider_cmd])
-					chat_memories[provider_cmd].clear() # Wipe memory for this provider
+					chat_memories[provider_cmd].clear()
 					logger.info('Memory for provider %s wiped. %d pairs removed.', provider_cmd, wiped_count)
 
 				response_content = "Memory erased."
@@ -164,9 +139,9 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 			else:
 				new_reply = await message_to_process.reply_text(response_content, parse_mode=None)
 				context.chat_data['bot_replies'][user_message_id] = new_reply.message_id
-			return # Exit after handling memory wipe
+			return # Exit after memory wipe
 
-		# Prepare messages for LLM, including memory if enabled
+		# Prepare messages for LLM, including memory
 		messages_for_llm = []
 		chat_completion_system_prompt = None
 
@@ -181,7 +156,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 			if config["chat_options"].get("system_prompt"):
 				messages_for_llm.append({"role": "system", "content": config["chat_options"]["system_prompt"]})
 
-			# Clean up expired messages (by time)
+			# Clean up expired messages
 			if memory_expires > 0:
 				initial_memory_count = len(provider_memory)
 				provider_memory[:] = [
@@ -202,7 +177,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 				if removed_count_edited > 0:
 					logger.debug('Removed %d old memory pair(s) for edited message ID %s. Remaining: %d.', removed_count_edited, initial_user_message_id, len(provider_memory))
 
-			# Enforce max_pairs limit (by count)
+			# Enforce max_pairs limit
 			if memory_max_pairs > 0:
 				removed_count_max_pairs = 0
 				while len(provider_memory) > memory_max_pairs:
@@ -231,7 +206,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 			provider_memory.append(new_memory_entry)
 			logger.debug('Added new memory entry for %s. Total entries: %d.', provider_cmd, len(provider_memory))
 
-		else: # Memory is not enabled
+		else: # Memory not enabled
 			messages_for_llm.append({"role": "user", "content": user_query})
 			chat_completion_system_prompt = config["chat_options"].get("system_prompt")
 
@@ -242,7 +217,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 				temperature=config["chat_options"]["temperature"]
 			)
 
-		# Removed chat response prefix as per user request
 		final_response_text = r
 		parse_mode_for_response = 'markdown'
 
@@ -291,24 +265,24 @@ async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 	chat_info = update.effective_chat
 
 	if not update.effective_message:
-		logger.warning("id update without effective message.")
+		logger.warning("ID update without effective message.")
 		return
 
 	# Check for authorization
 	if not is_chat_authorized(update):
-		return # Silently ignore unauthorized chat
+		return # Ignore unauthorized chat
 
-	# Output for /id uses markdown as per user request
+	# Output for /id uses markdown
 	if chat_info.type in ['group', 'supergroup']:
 		await update.effective_message.reply_text(
 			f"This is a group chat. Chat ID: `{chat_info.id}`\n"
 			f"Chat Title: `{chat_info.title}`",
-			parse_mode='markdown' # Retained markdown for /id command
+			parse_mode='markdown'
 		)
 	else:
 		await update.effective_message.reply_text(
 			f"Chat ID: `{chat_info.id}`\n",
-			parse_mode='markdown' # Retained markdown for /id command
+			parse_mode='markdown'
 		)
 
 
@@ -318,8 +292,6 @@ def main() -> None:
 
 	# Register command handlers
 	application.add_handler(CommandHandler("help", help_command))
-
-	# /id command is always registered (not disabled by config)
 	application.add_handler(CommandHandler("id", id_command))
 
 	# Add all providers
