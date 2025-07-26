@@ -51,16 +51,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 	if not is_chat_authorized(update):
 		return # Ignore unauthorized chat
 
-	help_text = "Available commands:\n`/help`\n"
+	help_text = "Available commands:\n/help\n"
 
 	for provider_config in config['chat_providers']:
 		wipe_subcmd_display = ""
 		if config['chat_options'].get('memory_enabled', False) and config['chat_options'].get('memory_wipe_subcmd'):
-			wipe_subcmd_display = f" [{config['chat_options']['memory_wipe_subcmd']}]"
-		help_text += f"`/{provider_config['cmd']}{wipe_subcmd_display} [text]`\n"
+			wipe_subcmd_display = f" | {config['chat_options']['memory_wipe_subcmd']}"
+		help_text += f"/{provider_config['cmd']} <text>{wipe_subcmd_display}\n"
 
 	if update.effective_message:
-		await update.effective_message.reply_text(help_text, parse_mode='markdown')
+		await update.effective_message.reply_text(help_text)
 
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_config: dict) -> None:
