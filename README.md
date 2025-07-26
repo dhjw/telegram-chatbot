@@ -31,6 +31,9 @@ cp ./telegram-chatbot.old/config.json ./telegram-chatbot
 cp -r ./telegram-chatbot.old/venv ./telegram-chatbot/venv
 ```
 
+## Notes
+- gemini-2.5-flash is noticeably faster than gemini-2.5-pro and has 250 instead of 100 free requests per day
+
 ## TODO, maybe
 - Gemini grounding + live search (big free-tier)
 - Grok 3 live search (expensive)
