@@ -273,17 +273,10 @@ async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 		return # Ignore unauthorized chat
 
 	# Output for /id uses markdown
-	if chat_info.type in ['group', 'supergroup']:
-		await update.effective_message.reply_text(
-			f"This is a group chat. Chat ID: `{chat_info.id}`\n"
-			f"Chat Title: `{chat_info.title}`",
-			parse_mode='markdown'
-		)
-	else:
-		await update.effective_message.reply_text(
-			f"Chat ID: `{chat_info.id}`\n",
-			parse_mode='markdown'
-		)
+	await update.effective_message.reply_text(
+		f"Chat ID: `{chat_info.id}`\n",
+		parse_mode='markdown'
+	)
 
 
 def main() -> None:
