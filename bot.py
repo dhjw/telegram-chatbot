@@ -242,20 +242,29 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, provider_conf
 
 	except Exception as e:
 		error_message = f"An error occurred while chatting with {display_name}: {e}"
+		current_bot_reply_id = None
+
 		if bot_reply_id_for_edit:
 			try:
-				await context.bot.edit_message_text(
+				edited_message = await context.bot.edit_message_text(
 					chat_id=chat_id,
 					message_id=bot_reply_id_for_edit,
 					text=error_message,
 					parse_mode=None
 				)
+				current_bot_reply_id = edited_message.message_id # Get message_id from the edited message object
 				logger.error('Edited bot response to error for user message ID %s: %s', user_message_id, e)
 			except Exception as edit_e:
 				logger.error('Failed to edit message %s with error (error: %s). Sending new error message.', bot_reply_id_for_edit, edit_e)
-				await message_to_process.reply_text(error_message, parse_mode=None)
+				new_reply = await message_to_process.reply_text(error_message, parse_mode=None)
+				current_bot_reply_id = new_reply.message_id
 		else:
-			await message_to_process.reply_text(error_message, parse_mode=None)
+			new_reply = await message_to_process.reply_text(error_message, parse_mode=None)
+			current_bot_reply_id = new_reply.message_id
+
+		if current_bot_reply_id:
+			context.chat_data['bot_replies'][user_message_id] = current_bot_reply_id
+
 		logger.error('chat() error with provider %s (cmd: %s): %s', display_name, provider_cmd, e)
 
 
