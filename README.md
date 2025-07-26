@@ -21,14 +21,14 @@ There's a few ways to do it.
  - If you're not using a venv, run it with the system python3 or make it executable and run it
 
 ## Update
-Clone the repo, copy your config.json and venv into it and see if it still runs, I guess!
+Clone the repo and apply changes, keeping your config.json and venv.
 
 ```
 cd /path/to/parent
-mv ./telegram-chatbot ./telegram-chatbot.old
-git clone https://github.com/dhjw/telegram-chatbot
-cp ./telegram-chatbot.old/config.json ./telegram-chatbot
-cp -r ./telegram-chatbot.old/venv ./telegram-chatbot/venv
+git clone https://github.com/dhjw/telegram-chatbot tmp
+rm -rf tmp/.git
+cp -rf tmp/. telegram-chatbot/
+rm -rf tmp
 ```
 
 ## Notes
