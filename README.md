@@ -39,3 +39,4 @@ cp -r ./telegram-chatbot.old/venv ./telegram-chatbot/venv
 - Grok 3 live search (expensive)
 - Media input support
 - Treat replies as new requests automatically
+- Image generation
