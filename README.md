@@ -35,3 +35,4 @@ cp -r ./telegram-chatbot.old/venv ./telegram-chatbot/venv
 - Gemini grounding + live search (big free-tier)
 - Grok 3 live search (expensive)
 - Media input support
+- Treat replies as new requests automatically
