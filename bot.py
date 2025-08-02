@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# edit config vars in .env
+# Telegram Chatbot https://github.com/dhjw/telegram-chatbot
 import os, logging, json, functools, time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
